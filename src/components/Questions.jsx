@@ -1,8 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import data from "../data";
-import { Layers, Box, Code, Shuffle, Bookmark, Star, Menu, X } from "lucide-react";
+import {
+  Layers,
+  Box,
+  Code,
+  Shuffle,
+  Bookmark,
+  Star,
+  Menu,
+  X,
+  LogOut,
+} from "lucide-react";
 
 const topicIcons = {
   Array: <Layers size={28} />,
@@ -25,19 +34,81 @@ const Questions = () => {
   const navigate = useNavigate();
   const [topics, setTopics] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [progress, setProgress] = useState([])
+  const token = localStorage.getItem("token");
+
+  
 
   useEffect(() => {
-    // Load from localStorage OR default data
-    const saved = JSON.parse(localStorage.getItem("topics"));
-    setTopics(saved || data);
-  }, []);
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
+    const fetchTopics = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg("");
+        const options = {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${token}`,
+            },
+          }
+        const res = await fetch(
+          "http://localhost:4000/api/topic/get-allTopics",options);
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setTopics(data.topics || []);
+        } else {
+          setErrorMsg(data.error || "Failed to fetch topics");
+        }
+      } catch (error) {
+        setErrorMsg("Something went wrong. Please try again later");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchProgress = async() =>{
+      try {
+        setLoading(true)
+        setErrorMsg('')
+
+        const options = {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${token}`,
+            },
+          }
+        const res = await fetch("http://localhost:4000/api/topic/each-topic/progress", options)
+        const data = await res.json();
+        if(res.ok){
+          console.log(data.progress)
+          setProgress(data.progress)
+        }
+      } catch (error) {
+        console.log("Something went wrong. Please try again later")
+      }
+    }
+
+    fetchTopics();
+    fetchProgress();
+  }, []);
+  console.log(topics)
   return (
     <div className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen font-poppins">
+      {/* Navbar */}
       <nav className="w-full flex justify-between items-center px-2 md:px-20 py-4 relative">
         {/* Logo */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="flex items-center space-x-3 cursor-pointer"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
@@ -52,9 +123,13 @@ const Questions = () => {
         </Link>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex gap-8 items-center text-black font-medium text-lg">
-          <Link to="/questions" className="hover:underline transition">Questions</Link>
-          <Link to="/progress" className="hover:underline transition">Progress</Link>
+        <div className="hidden md:flex gap-6 items-center text-black font-medium text-lg">
+          <Link to="/questions" className="hover:underline transition">
+            Questions
+          </Link>
+          <Link to="/progress" className="hover:underline transition">
+            Progress
+          </Link>
           <button
             onClick={() => navigate("/bookmarks")}
             className="flex items-center gap-2 bg-yellow-400 text-white px-3 py-2 rounded-full shadow-md hover:bg-yellow-500 transition"
@@ -62,6 +137,7 @@ const Questions = () => {
             <Bookmark size={18} />
             Bookmarks
           </button>
+          
         </div>
 
         {/* Hamburger Menu */}
@@ -73,7 +149,7 @@ const Questions = () => {
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <div className="absolute top-full right-6 mt-2 w-40 bg-white shadow-lg rounded-xl flex flex-col z-50">
+          <div className="absolute top-full right-6 mt-2 w-44 bg-white shadow-lg rounded-xl flex flex-col z-50">
             <Link
               to="/questions"
               onClick={() => setMenuOpen(false)}
@@ -89,16 +165,21 @@ const Questions = () => {
               Progress
             </Link>
             <button
-              onClick={() => { setMenuOpen(false); navigate("/bookmarks"); }}
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/bookmarks");
+              }}
               className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 rounded-lg"
             >
               <Bookmark size={18} />
               Bookmarks
             </button>
+            
           </div>
         )}
       </nav>
 
+      {/* Header */}
       <div className="pt-25 text-center relative px-8 mb-10">
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800">
           Track Your <span className="text-green-600">Progress</span>
@@ -108,67 +189,96 @@ const Questions = () => {
         </p>
       </div>
 
+      {/* Loader */}
+      {loading && (
+        <div className="flex justify-center items-center py-20">
+          <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {!loading && errorMsg && (
+        <div className="text-center text-red-600 font-medium py-10">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !errorMsg && topics.length === 0 && (
+        <div className="text-center text-gray-600 font-medium py-10">
+          No topics available yet 📭
+        </div>
+      )}
+
+      {/* Topics Grid */}
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 px-8 py-16">
-        {topics.map((topic, index) => {
-          const total = topic.questions.length;
-          const solved = topic.questions.filter((q) => q.Done).length;
-          const percent = total > 0 ? Math.round((solved / total) * 100) : 0;
-          const colors = colorPalette[index % colorPalette.length];
+        {!loading &&
+          !errorMsg &&
+          topics.map((topic, index) => {
+            const topicProgress = progress.find((p) => p.topicName === topic.topicName)
 
-          return (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.15 }}
-              whileHover={{ scale: 1.05 }}
-              className="cursor-pointer relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all"
-              onClick={() => navigate(`/topic/${topic.topicName}`)}
-            >
-             
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${colors.bg}`}
+            const total = topicProgress?.totalQuestions || 0;
+            const solved = topicProgress?.completed || 0;
+            const percent = topicProgress?.percentCompleted || 0;
+            const colors = colorPalette[index % colorPalette.length];
+
+            return (
+              <motion.div
+                key={topic._id || index}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.15 }}
+                whileHover={{ scale: 1.05 }}
+                className="cursor-pointer relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all"
+                onClick={() => navigate(`/get-topic/${encodeURIComponent(topic.topicName)}`)}
               >
-                {topicIcons[topic.topicName] || <Code size={28} />}
-              </div>
+                {/* Icon */}
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${colors.bg}`}
+                >
+                  {topicIcons[topic.topicName] || <Code size={28} />}
+                </div>
 
-             
-              <h2 className="text-xl font-semibold mb-1 text-gray-800">
-                {topic.topicName}
-              </h2>
-              <p className="text-sm text-gray-500 mb-4">{total} Questions</p>
+                {/* Title */}
+                <h2 className="text-xl font-semibold mb-1 text-gray-800">
+                  {topic.topicName}
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">{total} Questions</p>
 
-           
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mb-4">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${percent}%` }}
-                  transition={{ duration: 1.2 }}
-                  className={`h-3 rounded-full bg-gradient-to-r ${colors.bar}`}
-                />
-              </div>
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mb-4">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percent}%` }}
+                    transition={{ duration: 1.2 }}
+                    className={`h-3 rounded-full bg-gradient-to-r ${colors.bar}`}
+                  />
+                </div>
 
-              <div className="flex justify-between items-center text-sm font-medium">
-                <span className="text-gray-700">{solved}/{total}</span>
-
-                {solved === 0 ? (
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                    Pending
+                {/* Status */}
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-700">
+                    {solved}/{total}
                   </span>
-                ) : solved < total ? (
-                  <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                    <Star size={14} className="text-green-500" />
-                    Started
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                    Completed
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
+
+                  {solved === 0 ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                      Pending
+                    </span>
+                  ) : solved < total ? (
+                    <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                      <Star size={14} className="text-green-500" />
+                      Started
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                      Completed
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
       </div>
     </div>
   );

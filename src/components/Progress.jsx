@@ -15,19 +15,49 @@ const colorPalette = [
 const Progress = () => {
   const [topics, setTopics] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [totalProgress, setTotalProgress] = useState(null)
+  const token = localStorage.getItem("token")
+  
 
   useEffect(() => {
-    const storedTopics = JSON.parse(localStorage.getItem("topics")) || [];
-    setTopics(storedTopics);
+      const eachTopicProgress = async() => {
+        const options = {
+          method: "GET",
+          headers:{
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        }
+
+        const res = await fetch('http://localhost:4000/api/topic/each-topic/progress', options)
+        const data = await res.json()
+        if(res.ok){
+          setTopics(data.progress)
+        }
+        
+      }
+      eachTopicProgress()
+
+    const progress = async() => {
+      const options = {
+        method: "GET",
+        headers:{
+          "Content-Type" : "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      }
+      const res = await fetch("http://localhost:4000/api/topic/all-topics/progress", options)
+      const data = await res.json();
+      if(res.ok){
+        setTotalProgress(data.totalPercent)
+      }
+    } 
+    progress()
   }, []);
 
   // Calculate overall completion across all topics
-  const totalQuestions = topics.reduce((acc, t) => acc + t.questions.length, 0);
-  const totalDone = topics.reduce(
-    (acc, t) => acc + t.questions.filter((q) => q.Done).length,
-    0
-  );
-  const overallCompletion = totalQuestions > 0 ? Math.round((totalDone / totalQuestions) * 100) : 0;
+  
+  const overallCompletion = totalProgress;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 px-2 md:px-20 font-poppins">
@@ -150,9 +180,9 @@ const Progress = () => {
        
         <div className="mt-16 space-y-6">
           {topics.map((topic, i) => {
-            const total = topic.questions.length;
-            const done = topic.questions.filter((q) => q.Done).length;
-            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+            const total = topic.totalQuestions;
+            const done = topic.completed;
+            const percent = topic.percentCompleted;
             const colors = colorPalette[i % colorPalette.length];
 
             return (
