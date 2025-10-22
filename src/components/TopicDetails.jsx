@@ -1,137 +1,57 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Bookmark, StickyNote } from "lucide-react";
+import { useQuestions } from "../context/QuestionContext";
 
-const TopicDetail = () => {
+const TopicDetails = () => {
   const { topicName } = useParams();
   const decodedName = decodeURIComponent(topicName);
-  const token = localStorage.getItem("token");
+  const { topics, updateQuestion, fetchTopicWithProgress } = useQuestions();
+  const [showNotesMap, setShowNotesMap] = useState({});
+  const [localNotes, setLocalNotes] = useState({}); // ✅ Local notes state
+  const [debounceTimers, setDebounceTimers] = useState({}); // ✅ Debounce timers
 
-  const [topic, setTopic] = useState(null); // single topic
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const updateFields = async(qIndex, field, value) => {
-    try {
-      const options = {
-      method: "PATCH",
-      headers:{
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body:JSON.stringify({field, value})
-    }
-
-    const res = await fetch(`http://localhost:4000/api/topic/${topic.position}/questions/${qIndex}`, options)
-    const data = await res.json()
-    if(res.ok){
-      console.log(data)
-      setTopic(data.topic)
-    }
-    else{
-      alert(data.message)
-    }
-    } catch (error) {
-      console.log("Error in updating fields", error)
-    }
-    
-    
-  }
-
-  // Fetch topic on mount
+  // Fetch topic only if not already available
   useEffect(() => {
-    const fetchTopic = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    const hasReloaded = localStorage.getItem("reloadedOnce");
 
-        const res = await fetch(
-          `http://localhost:4000/api/topic/get-topic/${decodedName}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+    if (!hasReloaded) {
+      localStorage.setItem("reloadedOnce", "true");
+      window.location.reload();
+    }
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.message || "Failed to fetch topic");
-        }
+    const topic = topics.find((t) => t.topicName === decodedName);
+    if (!topic) {
+      fetchTopicWithProgress(decodedName);
+    }
+  }, [decodedName, topics, fetchTopicWithProgress]);
 
-        const data = await res.json();
-        setTopic(data); // store full topic
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const topic = topics.find((t) => t.topicName === decodedName);
 
-    fetchTopic();
-  }, [decodedName, token]);
-
-  // ---------------- Handlers ----------------
-  const toggleDone = (qIndex) => {
-    const newValue = !topic.questions[qIndex].Done
-    updateFields(qIndex, "Done", newValue)
-  };
-
-  const toggleBookmark = (qIndex) => {
-    const newValue = !topic.questions[qIndex].Bookmark
-    updateFields(qIndex, "Bookmark", newValue)
-  };
-
-  const toggleNotes = (qIndex) => {
-    const updated = { ...topic };
-    updated.questions[qIndex].showNotes =
-      !updated.questions[qIndex].showNotes;
-    setTopic(updated);
-  };
-
-  const handleNoteChange = (qIndex, value) => {
-    const updated = { ...topic };
-    updated.questions[qIndex].Notes = value;
-    setTopic(updated);
-    
-  };
-
-  const saveNotes = (qIndex) => {
-    const noteValue = topic.questions[qIndex].Notes;
-    updateFields(qIndex, "Notes", noteValue)
-  }
-  // ---------------- UI ----------------
-  if (loading) {
-    return (
-      <h1 className="text-center mt-20 text-xl text-gray-600">
-        Loading topic...
-      </h1>
-    );
+  if (!topic || !topic.questions) {
+    return <h2 className="text-center mt-20 text-gray-600">Loading topic...</h2>;
   }
 
-  if (error) {
-    return (
-      <h1 className="text-center mt-20 text-red-600">
-        ❌ Error: {error}
-      </h1>
-    );
-  }
+  const toggleDone = (q) => updateQuestion(topic._id, q._id, "Done", !q.Done);
+  const toggleBookmark = (q) => updateQuestion(topic._id, q._id, "Bookmark", !q.Bookmark);
+  const toggleNotes = (q) => setShowNotesMap((prev) => ({ ...prev, [q._id]: !prev[q._id] }));
 
-  if (!topic) {
-    return (
-      <h1 className="text-center mt-20 text-gray-600">
-        Topic not found 😢
-      </h1>
-    );
-  }
+  const handleNoteChange = (q, value) => {
+    setLocalNotes((prev) => ({ ...prev, [q._id]: value })); // ✅ Local update
+    setShowNotesMap((prev) => ({ ...prev, [q._id]: true }));
+
+    // ✅ Debounced backend update
+    if (debounceTimers[q._id]) clearTimeout(debounceTimers[q._id]);
+    const timer = setTimeout(() => {
+      updateQuestion(topic._id, q._id, "Notes", value);
+    }, 500); // 0.5s delay
+    setDebounceTimers((prev) => ({ ...prev, [q._id]: timer }));
+  };
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen px-6 md:px-20 py-20 font-poppins">
-      {/* Back button */}
-      <div className="absolute top-10 left-20">
+    <div className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen px-6 md:px-20 py-20 font-poppins relative">
+      <div className="absolute top-4 left-4 sm:top-10 sm:left-20">
         <Link
           to="/questions"
           className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-medium hover:shadow-lg transition"
@@ -140,107 +60,77 @@ const TopicDetail = () => {
         </Link>
       </div>
 
-      {/* Title */}
       <h1 className="text-3xl font-extrabold text-center mb-10">
         <span className="text-gray-800">{topic.topicName}</span>{" "}
-        <span className="text-green-600">
-          – {topic.questions.length} Questions
-        </span>
+        <span className="text-green-600">– {topic.questions.length} Questions</span>
       </h1>
 
-      {/* Questions list */}
       <div className="space-y-8">
         {topic.questions.map((q, idx) => (
           <motion.div
-            key={idx}
+            key={q._id}
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: idx * 0.1 }}
+            transition={{ duration: 0.4, delay: idx * 0.05 }}
             className="p-6 rounded-2xl shadow-md bg-white hover:shadow-lg border border-gray-200"
           >
             <h2 className="font-semibold text-lg text-gray-800 mb-3">
-              {idx + 1}. {q.Problem}
+              {idx + 1}. {q.problem}
             </h2>
 
-            {/* Links */}
             <div className="flex gap-4 text-sm text-green-700 mb-4 flex-wrap">
               {q.URL && (
-                <a
-                  href={q.URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
+                <a href={q.URL} target="_blank" rel="noreferrer" className="hover:underline">
                   GeeksForGeeks
                 </a>
               )}
-              {q.LeetCode && (
-                <a
-                  href={q.LeetCode}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  LeetCode
-                </a>
-              )}
-              {q.Video && (
-                <a
-                  href={q.Video}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  Video
+              {q.URL2 && (
+                <a href={q.URL2} target="_blank" rel="noreferrer" className="hover:underline">
+                  Coding Ninjas
                 </a>
               )}
             </div>
 
-            {/* Action buttons */}
             <div className="flex gap-4 flex-wrap">
               <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => toggleDone(idx)}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleDone(q);
+                }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  q.Done
-                    ? "bg-green-500 text-white shadow-md"
-                    : "bg-gray-200 text-gray-700"
+                  q.Done ? "bg-green-500 text-white shadow-md" : "bg-gray-200 text-gray-700"
                 }`}
               >
-                <CheckCircle size={16} />
-                {q.Done ? "Done" : "Mark Done"}
+                <CheckCircle size={16} /> {q.Done ? "Done" : "Mark Done"}
               </motion.button>
 
               <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => toggleBookmark(idx)}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleBookmark(q);
+                }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  q.Bookmark
-                    ? "bg-yellow-400 text-white shadow-md"
-                    : "bg-gray-200 text-gray-700"
+                  q.Bookmark ? "bg-yellow-400 text-white shadow-md" : "bg-gray-200 text-gray-700"
                 }`}
               >
-                <Bookmark size={16} />
-                {q.Bookmark ? "Bookmarked" : "Bookmark"}
+                <Bookmark size={16} /> {q.Bookmark ? "Bookmarked" : "Bookmark"}
               </motion.button>
 
               <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => toggleNotes(idx)}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => toggleNotes(q)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  q.showNotes
-                    ? "bg-blue-500 text-white shadow-md"
-                    : "bg-gray-200 text-gray-700"
+                  showNotesMap[q._id] ? "bg-blue-500 text-white shadow-md" : "bg-gray-200 text-gray-700"
                 }`}
               >
-                <StickyNote size={16} />
-                Notes
+                <StickyNote size={16} /> Notes
               </motion.button>
             </div>
 
-            {/* Notes textarea */}
             <AnimatePresence>
-              {q.showNotes && (
+              {showNotesMap[q._id] && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -249,11 +139,11 @@ const TopicDetail = () => {
                   className="mt-4"
                 >
                   <textarea
-                    value={q.Notes || ""}
-                    onChange={(e) => handleNoteChange(idx, e.target.value)}
-                    onBlur={() => saveNotes(idx)}
+                    value={localNotes[q._id] ?? q.Notes ?? ""}
+                    onChange={(e) => handleNoteChange(q, e.target.value)}
                     placeholder="Write your notes here..."
                     className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    rows={5}
                   />
                 </motion.div>
               )}
@@ -265,4 +155,4 @@ const TopicDetail = () => {
   );
 };
 
-export default TopicDetail;
+export default TopicDetails;

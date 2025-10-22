@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Menu, X, LogOut } from "lucide-react";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); // clear token
-    navigate("/login"); // redirect to login
+    localStorage.removeItem("token");
+    localStorage.removeItem("reloadedOnce"); // clear token
+    // navigate("/login");
+    window.location.reload(); // redirect to login
   };
 
   return (

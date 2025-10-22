@@ -25,10 +25,19 @@ export default function Register() {
       });
 
       const data = await res.json();
+
       if (res.ok && data.token) {
-        localStorage.setItem("token", data.token)
+        localStorage.setItem("token", data.token);
+
+        // Decode JWT to check role
+        const decoded = JSON.parse(atob(data.token.split(".")[1]));
+        if (decoded.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+
         alert("Registration successful!");
-        navigate("/");
       } else {
         alert(data.message || "Registration failed.");
       }

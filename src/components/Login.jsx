@@ -33,7 +33,13 @@ export default function LoginPage() {
       const data = await res.json();
       if (res.ok && data.token) {
         localStorage.setItem("token", data.token);
-        navigate("/");
+
+        const decoded = JSON.parse(atob(data.token.split(".")[1]));
+        if (decoded.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       } else {
         setErrorMsg(data.message || "Google login failed");
       }
@@ -42,7 +48,6 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ Normal Email/Password login
   const handleLogin = async () => {
     try {
       const res = await fetch("http://localhost:4000/api/auth/login", {
@@ -55,7 +60,13 @@ export default function LoginPage() {
 
       if (res.ok && data.token) {
         localStorage.setItem("token", data.token);
-        navigate("/");
+
+        const decoded = JSON.parse(atob(data.token.split(".")[1]));
+        if (decoded.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       } else {
         setErrorMsg(data.message || "Invalid credentials");
       }
@@ -67,7 +78,6 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-r from-blue-400 to-indigo-500 p-4">
       <div className="flex flex-col md:flex-row w-full max-w-[900px] bg-white rounded-xl shadow-lg overflow-hidden">
-        
         {/* Left side - Login form */}
         <div className="w-full md:w-1/2 p-8 md:p-10">
           {/* Logo */}
@@ -115,6 +125,8 @@ export default function LoginPage() {
             />
           </div>
 
+          
+
           {/* Error Message */}
           {errorMsg && (
             <p className="text-red-500 text-sm mb-4 text-center">{errorMsg}</p>
@@ -123,7 +135,7 @@ export default function LoginPage() {
           {/* Login button */}
           <button
             onClick={handleLogin}
-            className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-700"
+            className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-700 mt-3"
           >
             Log In
           </button>
