@@ -29,7 +29,7 @@ const Progress = () => {
           }
         }
 
-        const res = await fetch('http://localhost:4000/api/topic/each-topic/progress', options)
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/topic/each-topic/progress`, options)
         const data = await res.json()
         if(res.ok){
           setTopics(data.progress)
@@ -46,7 +46,7 @@ const Progress = () => {
           "Authorization": `Bearer ${token}`
         }
       }
-      const res = await fetch("http://localhost:4000/api/topic/all-topics/progress", options)
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/topic/all-topics/progress`, options)
       const data = await res.json();
       if(res.ok){
         setTotalProgress(data.totalPercent)

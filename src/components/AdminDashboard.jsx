@@ -31,7 +31,7 @@ const AdminDashboard = () => {
     const fetchUsersProgress = async () => {
       try {
         const res = await fetch(
-          "http://localhost:4000/api/admin/allUsersProgress",
+          `${import.meta.env.VITE_API_URL}/admin/allUsersProgress`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -56,7 +56,7 @@ const AdminDashboard = () => {
   const viewUserProgress = async (userId) => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/admin/user/${userId}`,
+        `${import.meta.env.VITE_API_URL}/admin/user/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

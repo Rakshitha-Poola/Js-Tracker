@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 const QuestionContext = createContext();
 
@@ -10,7 +10,7 @@ export const QuestionProvider = ({ children }) => {
   const fetchTopics = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:4000/api/topic/get-allTopics", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/topic/get-allTopics`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -25,7 +25,7 @@ export const QuestionProvider = ({ children }) => {
     if (!token) return;
     try {
       const res = await fetch(
-        `http://localhost:4000/api/topic/get-topic/${encodeURIComponent(topicName)}`,
+        `${import.meta.env.VITE_API_URL}/topic/get-topic/${encodeURIComponent(topicName)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -62,7 +62,7 @@ export const QuestionProvider = ({ children }) => {
 
     try {
       const res = await fetch(
-        `http://localhost:4000/api/topic/${topicId}/questions/${questionId}`,
+        `${import.meta.env.VITE_API_URL}/topic/${topicId}/questions/${questionId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

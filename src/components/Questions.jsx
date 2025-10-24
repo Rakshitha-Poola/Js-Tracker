@@ -35,6 +35,7 @@ const Questions = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const token = localStorage.getItem("token");
+  console.log(`API URL ${import.meta.env.VITE_API_URL}`)
 
   useEffect(() => {
     if (!token) {
@@ -54,13 +55,12 @@ const Questions = () => {
 
         // Fetch topics and progress in parallel
         const [topicsRes, progressRes] = await Promise.all([
-          fetch("http://localhost:4000/api/topic/get-allTopics", { headers }),
-          fetch("http://localhost:4000/api/topic/each-topic/progress", { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/topic/get-allTopics`, { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/topic/each-topic/progress`, { headers }),
         ]);
 
         const topicsData = await topicsRes.json();
         const progressData = await progressRes.json();
-
         // Merge progress into topics immediately
         const mergedTopics = (topicsData.topics || []).map((topic) => {
           const tProg = (progressData.progress || []).find(
