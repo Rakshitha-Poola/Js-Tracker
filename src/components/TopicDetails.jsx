@@ -9,10 +9,10 @@ const TopicDetails = () => {
   const decodedName = decodeURIComponent(topicName);
   const { topics, updateQuestion, fetchTopicWithProgress } = useQuestions();
   const [showNotesMap, setShowNotesMap] = useState({});
-  const [localNotes, setLocalNotes] = useState({}); // ✅ Local notes state
-  const [debounceTimers, setDebounceTimers] = useState({}); // ✅ Debounce timers
+  const [localNotes, setLocalNotes] = useState({});
+  const [debounceTimers, setDebounceTimers] = useState({});
 
-  // Fetch topic only if not already available
+  // Reload once & fetch topic
   useEffect(() => {
     const hasReloaded = localStorage.getItem("reloadedOnce");
 
@@ -22,15 +22,22 @@ const TopicDetails = () => {
     }
 
     const topic = topics.find((t) => t.topicName === decodedName);
-    if (!topic) {
-      fetchTopicWithProgress(decodedName);
-    }
+    if (!topic) fetchTopicWithProgress(decodedName);
   }, [decodedName, topics, fetchTopicWithProgress]);
 
   const topic = topics.find((t) => t.topicName === decodedName);
 
+  // ✅ Loader while fetching topic
   if (!topic || !topic.questions) {
-    return <h2 className="text-center mt-20 text-gray-600">Loading topic...</h2>;
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="w-12 h-12 border-4 border-yellow-400 border-t-green-500 rounded-full"
+        />
+      </div>
+    );
   }
 
   const toggleDone = (q) => updateQuestion(topic._id, q._id, "Done", !q.Done);
@@ -38,14 +45,13 @@ const TopicDetails = () => {
   const toggleNotes = (q) => setShowNotesMap((prev) => ({ ...prev, [q._id]: !prev[q._id] }));
 
   const handleNoteChange = (q, value) => {
-    setLocalNotes((prev) => ({ ...prev, [q._id]: value })); // ✅ Local update
+    setLocalNotes((prev) => ({ ...prev, [q._id]: value }));
     setShowNotesMap((prev) => ({ ...prev, [q._id]: true }));
 
-    // ✅ Debounced backend update
     if (debounceTimers[q._id]) clearTimeout(debounceTimers[q._id]);
     const timer = setTimeout(() => {
       updateQuestion(topic._id, q._id, "Notes", value);
-    }, 500); // 0.5s delay
+    }, 500);
     setDebounceTimers((prev) => ({ ...prev, [q._id]: timer }));
   };
 
@@ -79,41 +85,23 @@ const TopicDetails = () => {
             </h2>
 
             <div className="flex gap-4 text-sm text-green-700 mb-4 flex-wrap">
-              {q.URL && (
-                <a href={q.URL} target="_blank" rel="noreferrer" className="hover:underline">
-                  GeeksForGeeks
-                </a>
-              )}
-              {q.URL2 && (
-                <a href={q.URL2} target="_blank" rel="noreferrer" className="hover:underline">
-                  Coding Ninjas
-                </a>
-              )}
+              {q.URL && <a href={q.URL} target="_blank" rel="noreferrer" className="hover:underline">GeeksForGeeks</a>}
+              {q.URL2 && <a href={q.URL2} target="_blank" rel="noreferrer" className="hover:underline">Coding Ninjas</a>}
             </div>
 
             <div className="flex gap-4 flex-wrap">
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleDone(q);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  q.Done ? "bg-green-500 text-white shadow-md" : "bg-gray-200 text-gray-700"
-                }`}
+                onClick={() => toggleDone(q)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${q.Done ? "bg-green-500 text-white shadow-md" : "bg-gray-200 text-gray-700"}`}
               >
                 <CheckCircle size={16} /> {q.Done ? "Done" : "Mark Done"}
               </motion.button>
 
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleBookmark(q);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  q.Bookmark ? "bg-yellow-400 text-white shadow-md" : "bg-gray-200 text-gray-700"
-                }`}
+                onClick={() => toggleBookmark(q)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${q.Bookmark ? "bg-yellow-400 text-white shadow-md" : "bg-gray-200 text-gray-700"}`}
               >
                 <Bookmark size={16} /> {q.Bookmark ? "Bookmarked" : "Bookmark"}
               </motion.button>
@@ -121,9 +109,7 @@ const TopicDetails = () => {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => toggleNotes(q)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  showNotesMap[q._id] ? "bg-blue-500 text-white shadow-md" : "bg-gray-200 text-gray-700"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${showNotesMap[q._id] ? "bg-blue-500 text-white shadow-md" : "bg-gray-200 text-gray-700"}`}
               >
                 <StickyNote size={16} /> Notes
               </motion.button>

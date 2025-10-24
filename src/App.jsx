@@ -5,7 +5,7 @@ import Progress from "./components/Progress";
 import TopicDetail from "./components/TopicDetails";
 import LoginPage from "./components/Login";
 import Bookmarks from "./components/Bookmarks";
-import Register from "./components/register";
+import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
