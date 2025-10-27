@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Bookmark, StickyNote } from "lucide-react";
 import { useQuestions } from "../context/QuestionContext";
@@ -12,45 +12,70 @@ const Bookmarks = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Load topics once on mount if needed
   useEffect(() => {
-  // Reload only once per session
-  if (!sessionStorage.getItem("bookmarksReloaded")) {
-    sessionStorage.setItem("bookmarksReloaded", "true");
-    window.location.reload();
-  }
-}, []);
-
-  // ✅ Fetch topics **once** if not already loaded
-  useEffect(() => {
-    const loadTopics = async () => {
-      if (topics.length === 0) {
-        setLoading(true);
-        await fetchTopics(); // fetch from API/context
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (!topics || topics.length === 0) {
+          await fetchTopics();
+        }
+      } catch (err) {
+        // optionally handle
+        console.error("Failed to fetch topics:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     };
-    loadTopics();
-  }, [fetchTopics, topics.length]); // only re-run if topics length changes
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchTopics, topics.length]);
 
-  // Compute bookmarks **only after topics are loaded**
-  const bookmarks = !loading
-    ? topics.flatMap((t) =>
-        t.questions
-          .filter((q) => q.Bookmark)
-          .map((q) => ({ ...q, topicId: t._id, topicName: t.topicName }))
-      )
-    : [];
+  // Compute bookmarks from topics (only once topics loaded)
+  const bookmarks = React.useMemo(() => {
+    if (!topics || topics.length === 0) return [];
+    return topics.flatMap((t) =>
+      (t.questions || [])
+        .filter((q) => q.Bookmark)
+        .map((q) => ({ ...q, topicId: t._id, topicName: t.topicName }))
+    );
+  }, [topics]);
 
-  const topicOptions = ["All", ...Array.from(new Set(bookmarks.map((b) => b.topicName)))];
-  const filteredBookmarks =
-    selectedTopic === "All"
+  // Build topic filter options from bookmarks
+  const topicOptions = React.useMemo(() => {
+    const set = new Set(bookmarks.map((b) => b.topicName));
+    return ["All", ...Array.from(set)];
+  }, [bookmarks]);
+
+  const filteredBookmarks = React.useMemo(() => {
+    return selectedTopic === "All"
       ? bookmarks
       : bookmarks.filter((q) => q.topicName === selectedTopic);
+  }, [bookmarks, selectedTopic]);
+
+  // Initialize localNotes & showNotesMap based on bookmarks so UI doesn't flicker
+  useEffect(() => {
+    const notesInit = {};
+    const showInit = {};
+    for (const q of bookmarks) {
+      if (q.Notes) {
+        notesInit[q._id] = q.Notes;
+        showInit[q._id] = false; // collapsed by default
+      }
+    }
+    setLocalNotes((prev) => ({ ...notesInit, ...prev }));
+    setShowNotesMap((prev) => ({ ...showInit, ...prev }));
+  }, [bookmarks]);
 
   // Toggle handlers
   const toggleDone = (q) => updateQuestion(q.topicId, q._id, "Done", !q.Done);
-  const toggleBookmark = (q) => updateQuestion(q.topicId, q._id, "Bookmark", !q.Bookmark);
-  const toggleNotes = (q) => setShowNotesMap((prev) => ({ ...prev, [q._id]: !prev[q._id] }));
+  const toggleBookmark = (q) =>
+    updateQuestion(q.topicId, q._id, "Bookmark", !q.Bookmark);
+  const toggleNotes = (q) =>
+    setShowNotesMap((prev) => ({ ...prev, [q._id]: !prev[q._id] }));
 
   const handleNoteChange = (q, value) => {
     setLocalNotes((prev) => ({ ...prev, [q._id]: value }));
@@ -58,10 +83,14 @@ const Bookmarks = () => {
   };
 
   const handleNoteBlur = (q) => {
-    updateQuestion(q.topicId, q._id, "Notes", localNotes[q._id] ?? "");
+    const noteValue = localNotes[q._id] ?? "";
+    // Only update if changed (optional)
+    if (noteValue !== (q.Notes ?? "")) {
+      updateQuestion(q.topicId, q._id, "Notes", noteValue);
+    }
   };
 
-  // ✅ Loader while fetching topics
+  // Loader while fetching topics
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -135,7 +164,9 @@ const Bookmarks = () => {
               transition={{ duration: 0.4, delay: idx * 0.05 }}
               className="p-6 rounded-2xl shadow-md bg-white hover:shadow-lg border border-gray-200"
             >
-              <h2 className="font-semibold text-lg mb-2">{idx + 1}. {q.problem}</h2>
+              <h2 className="font-semibold text-lg mb-2">
+                {idx + 1}. {q.problem}
+              </h2>
 
               <div className="flex gap-4 text-sm text-green-700 mb-4 flex-wrap ml-5">
                 {q.URL && <a href={q.URL} target="_blank" rel="noreferrer" className="hover:underline">GeeksForGeeks</a>}
@@ -152,7 +183,7 @@ const Bookmarks = () => {
                 </motion.button>
 
                 <motion.button
-                  whileTap={{ scale:0.95 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => toggleBookmark(q)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${q.Bookmark ? "bg-yellow-400 text-white" : "bg-gray-200 text-gray-700"}`}
                 >
@@ -160,7 +191,7 @@ const Bookmarks = () => {
                 </motion.button>
 
                 <motion.button
-                  whileTap={{ scale:0.95 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => toggleNotes(q)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${showNotesMap[q._id] ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
                 >
@@ -171,10 +202,10 @@ const Bookmarks = () => {
               <AnimatePresence>
                 {showNotesMap[q._id] && (
                   <motion.div
-                    initial={{ height:0, opacity:0 }}
-                    animate={{ height:"auto", opacity:1 }}
-                    exit={{ height:0, opacity:0 }}
-                    transition={{ duration:0.3 }}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
                     className="mt-2"
                   >
                     <textarea
