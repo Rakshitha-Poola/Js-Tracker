@@ -24,27 +24,25 @@ export default function LoginPage() {
 
   const handleGoogleResponse = async (response) => {
     try {
-      const res = await fetch("http://localhost:4000/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: response.credential }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/auth/google`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: response.credential }),
+        }
+      );
 
       const data = await res.json();
       if (res.ok && data.token) {
         localStorage.setItem("token", data.token);
-
         const decoded = JSON.parse(atob(data.token.split(".")[1]));
-        if (decoded.role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+        navigate(decoded.role === "admin" ? "/admin" : "/");
       } else {
         setErrorMsg(data.message || "Google login failed");
       }
     } catch (error) {
-      setErrorMsg("Something went wrong. Try again later", error);
+      setErrorMsg("Something went wrong. Try again later");
     }
   };
 
@@ -60,27 +58,21 @@ export default function LoginPage() {
 
       if (res.ok && data.token) {
         localStorage.setItem("token", data.token);
-
         const decoded = JSON.parse(atob(data.token.split(".")[1]));
-        if (decoded.role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+        navigate(decoded.role === "admin" ? "/admin" : "/");
       } else {
         setErrorMsg(data.message || "Invalid credentials");
       }
     } catch (error) {
-      setErrorMsg("Server error. Please try again later", error);
+      setErrorMsg("Server error. Please try again later");
     }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-r from-blue-400 to-indigo-500 p-4">
       <div className="flex flex-col md:flex-row w-full max-w-[900px] bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Left side - Login form */}
+        {/* Left */}
         <div className="w-full md:w-1/2 p-8 md:p-10">
-          {/* Logo */}
           <div className="flex items-center space-x-2 mb-8">
             <img
               src="https://res.cloudinary.com/dqxbyu1dj/image/upload/v1757942564/open-book_ksjwiw.png"
@@ -92,7 +84,6 @@ export default function LoginPage() {
 
           <h2 className="text-3xl font-bold mb-6">Welcome Back 🚀</h2>
 
-          {/* Google login button */}
           <div id="googleLoginBtn" className="w-full mb-6 flex justify-center"></div>
 
           <div className="flex items-center mb-6">
@@ -101,7 +92,6 @@ export default function LoginPage() {
             <div className="flex-grow h-px bg-gray-300"></div>
           </div>
 
-          {/* Email */}
           <div className="mb-4">
             <label className="text-gray-600 text-sm">Email Address</label>
             <input
@@ -113,7 +103,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div className="mb-4">
             <label className="text-gray-600 text-sm">Password</label>
             <input
@@ -125,14 +114,10 @@ export default function LoginPage() {
             />
           </div>
 
-          
-
-          {/* Error Message */}
           {errorMsg && (
             <p className="text-red-500 text-sm mb-4 text-center">{errorMsg}</p>
           )}
 
-          {/* Login button */}
           <button
             onClick={handleLogin}
             className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-700 mt-3"
@@ -141,19 +126,18 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-sm text-gray-600 text-center">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/register" className="text-pink-600 hover:underline">
               Sign up
             </Link>
           </p>
         </div>
 
-        {/* Right side - Info */}
+        {/* Right */}
         <div className="w-full md:w-1/2 bg-gray-50 flex flex-col items-center justify-start p-8 md:p-10">
           <h3 className="font-semibold mb-2">JS-Tracker Academy</h3>
           <p className="text-sm text-gray-500 mb-6 text-center">
-            Track your JavaScript & DSA progress, bookmark questions, take notes,
-            and measure your growth step by step. Let’s build consistency together 💻🔥
+            Build consistency in JavaScript & Data Structures 💻🔥
           </p>
           <button className="border border-gray-400 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 mb-6">
             START LEARNING
