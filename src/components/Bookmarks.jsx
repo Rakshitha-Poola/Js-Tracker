@@ -6,6 +6,11 @@ import { Link, useNavigate } from "react-router-dom";
 
 const Bookmarks = () => {
   const { topics, fetchTopics, updateQuestion } = useQuestions();
+  const [bookmarks, setBookmarks] = useState([]);
+  const [filteredBookmarks, setFilteredBookmarks] = useState([]);
+  const [topicOptions, setTopicOptions] = useState([]);
+
+
   const [showNotesMap, setShowNotesMap] = useState({});
   const [localNotes, setLocalNotes] = useState({});
   const [selectedTopic, setSelectedTopic] = useState("All");
@@ -27,25 +32,40 @@ const Bookmarks = () => {
         setLoading(true);
         await fetchTopics(); // fetch from API/context
       }
-      setLoading(false);
-    };
-    loadTopics();
-  }, [fetchTopics, topics.length]); // only re-run if topics length changes
 
-  // Compute bookmarks **only after topics are loaded**
-  const bookmarks = !loading
-    ? topics.flatMap((t) =>
+
+       if(topics?.length > 0){
+      setLoading(false);
+  const filtertedTopics =  topics.flatMap((t) =>
         t.questions
           .filter((q) => q.Bookmark)
           .map((q) => ({ ...q, topicId: t._id, topicName: t.topicName }))
-      )
-    : [];
+      );
+      console.log(filtertedTopics)
+    setBookmarks(filtertedTopics);
 
-  const topicOptions = ["All", ...Array.from(new Set(bookmarks.map((b) => b.topicName)))];
-  const filteredBookmarks =
+    }
+
+    };
+    loadTopics();
+  }, [fetchTopics, topics]); // only re-run if topics length changes
+
+
+
+  useEffect(() => {
+  const options = ["All", ...Array.from(new Set(bookmarks.map((b) => b.topicName)))];
+  const updatedBookmarks =
     selectedTopic === "All"
       ? bookmarks
       : bookmarks.filter((q) => q.topicName === selectedTopic);
+
+  setTopicOptions(options);
+  setFilteredBookmarks(updatedBookmarks);
+
+  }, [bookmarks, selectedTopic])
+
+  // Compute bookmarks **only after topics are loaded**
+
 
   // Toggle handlers
   const toggleDone = (q) => updateQuestion(q.topicId, q._id, "Done", !q.Done);
@@ -74,12 +94,19 @@ const Bookmarks = () => {
     );
   }
 
+  if(topics?.length === 0){
+return ( <p className="text-center mt-20 text-gray-600">
+          No bookmarked questions
+          {selectedTopic !== "All" ? ` for "${selectedTopic}"` : ""}.
+        </p>)
+  }
+
   return (
     <div className="min-h-screen font-poppins bg-gray-50">
       {/* Navbar */}
       <nav className="w-full flex justify-between items-center px-6 md:px-20 py-4">
         <Link to="/" className="flex items-center space-x-3 cursor-pointer">
-          <img
+          <img  
             src="https://res.cloudinary.com/dqxbyu1dj/image/upload/v1757942564/open-book_ksjwiw.png"
             alt="Logo"
             className="w-12 h-12 animate-bounce"
@@ -106,13 +133,13 @@ const Bookmarks = () => {
           📌 Bookmarked <span className="text-green-600">Questions</span>
         </h1>
 
-        {bookmarks.length > 0 && (
+        {topicOptions && topicOptions.length > 0 && (
           <select
             className="border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full md:w-auto text-sm md:text-base"
             value={selectedTopic}
             onChange={(e) => setSelectedTopic(e.target.value)}
           >
-            {topicOptions.map((topic) => (
+            {topicOptions?.map((topic) => (
               <option key={topic} value={topic}>{topic}</option>
             ))}
           </select>
@@ -120,12 +147,7 @@ const Bookmarks = () => {
       </div>
 
       {/* Bookmarked Questions */}
-      {filteredBookmarks.length === 0 ? (
-        <p className="text-center mt-20 text-gray-600">
-          No bookmarked questions
-          {selectedTopic !== "All" ? ` for "${selectedTopic}"` : ""}.
-        </p>
-      ) : (
+      {filteredBookmarks && filteredBookmarks.length > 0 && (
         <div className="space-y-8 px-6 md:px-20 pb-20">
           {filteredBookmarks.map((q, idx) => (
             <motion.div

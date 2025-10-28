@@ -171,12 +171,13 @@ export const QuestionProvider = ({ children }) => {
   return (
     <QuestionContext.Provider
       value={{
-        topics: visibleTopics,
-        fetchTopics,
-        fetchTopicWithProgress,
-        updateQuestion,
-        loading,
-      }}
+  topics,
+  visibleTopics,
+  fetchTopics,
+  fetchTopicWithProgress,
+  updateQuestion,
+  loading,
+}}
     >
       {children}
     </QuestionContext.Provider>
