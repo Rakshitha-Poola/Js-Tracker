@@ -14,13 +14,6 @@ const TopicDetails = () => {
 
   // Reload once & fetch topic
   useEffect(() => {
-    // const hasReloaded = localStorage.getItem("reloadedOnce");
-
-    // if (!hasReloaded) {
-    //   localStorage.setItem("reloadedOnce", "true");
-    //   window.location.reload();
-    // }
-
     const topic = topics.find((t) => t.topicName === decodedName);
     if (!topic) fetchTopicWithProgress(decodedName);
   }, [decodedName, topics, fetchTopicWithProgress]);

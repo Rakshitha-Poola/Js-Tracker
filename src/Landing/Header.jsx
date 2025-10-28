@@ -8,7 +8,6 @@ const Header = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("reloadedOnce"); // clear token
     sessionStorage.removeItem("bookmarksReloaded");
 
     // navigate("/login");
