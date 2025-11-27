@@ -35,7 +35,7 @@ const Questions = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const token = localStorage.getItem("token");
-  console.log(`API URL ${import.meta.env.VITE_API_URL}`)
+
 
   useEffect(() => {
     if (!token) {
